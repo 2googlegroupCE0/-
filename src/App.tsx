@@ -1,0 +1,147 @@
+import { useCallback, useEffect, useState } from 'react';
+import { ARTICLES_BY_SLUG } from './data/articles.ts';
+import { SECTIONS_BY_SLUG } from './data/sections.ts';
+import type { SectionSlug } from './types/editorial.ts';
+import { Header } from './components/Header.tsx';
+import { Footer } from './components/Footer.tsx';
+import { SearchOverlay } from './components/SearchOverlay.tsx';
+import { HomePage } from './pages/HomePage.tsx';
+import { ArchivePage } from './pages/ArchivePage.tsx';
+import { ArticlePage } from './pages/ArticlePage.tsx';
+import { AuthorsPage } from './pages/AuthorsPage.tsx';
+import { StandardsPage } from './pages/StandardsPage.tsx';
+
+export default function App() {
+  const [locationPath, setLocationPath] = useState<string>(() =>
+    typeof window !== 'undefined'
+      ? window.location.pathname + window.location.search
+      : '/',
+  );
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setLocationPath(window.location.pathname + window.location.search);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const navigate = useCallback((target: string) => {
+    const [pathAndQuery, hash] = target.split('#');
+    const cleanTarget = pathAndQuery || '/';
+    window.history.pushState({}, '', target);
+    setLocationPath(cleanTarget);
+
+    if (hash) {
+      setTimeout(() => {
+        const el = document.getElementById(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 40);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, []);
+
+  const [pathnameOnly, searchQuery] = locationPath.split('?');
+  const normalizedPath = pathnameOnly.replace(/\/+$/, '') || '/';
+  const queryParams = new URLSearchParams(searchQuery || '');
+  const initialQuery = queryParams.get('q') || '';
+
+  const renderRoute = () => {
+    if (normalizedPath === '/') {
+      return <HomePage onNavigate={navigate} />;
+    }
+
+    if (normalizedPath === '/archive') {
+      return <ArchivePage initialQuery={initialQuery} onNavigate={navigate} />;
+    }
+
+    if (normalizedPath.startsWith('/section/')) {
+      const slug = normalizedPath.replace('/section/', '') as SectionSlug;
+      if (SECTIONS_BY_SLUG[slug]) {
+        return <ArchivePage sectionSlug={slug} onNavigate={navigate} />;
+      }
+    }
+
+    if (normalizedPath.startsWith('/articles/')) {
+      const slug = normalizedPath.replace('/articles/', '');
+      const article = ARTICLES_BY_SLUG[slug];
+      if (article) {
+        return <ArticlePage article={article} onNavigate={navigate} />;
+      }
+    }
+
+    if (normalizedPath === '/authors') {
+      return <AuthorsPage onNavigate={navigate} />;
+    }
+
+    if (normalizedPath === '/standards') {
+      return <StandardsPage onNavigate={navigate} />;
+    }
+
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6">
+        <p className="font-mono text-xs text-[#9A3412]">404 · PAGE NOT FOUND</p>
+        <h1 className="mt-3 font-serif text-3xl font-semibold text-[#1C1917]">
+          This archival path could not be located.
+        </h1>
+        <p className="mt-3 text-sm text-[#57534E]">
+          Return to the Front Page or browse all 50 indexed essays in the archive.
+        </p>
+        <div className="mt-8 flex items-center justify-center gap-4">
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/');
+            }}
+            className="rounded-md bg-[#1C1917] px-5 py-2.5 text-xs font-medium text-[#FBF9F5] hover:bg-[#1E3A8A]"
+          >
+            Front Page
+          </a>
+          <a
+            href="/archive"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/archive');
+            }}
+            className="rounded-md border border-[#D6D0C4] px-5 py-2.5 text-xs font-medium text-[#1C1917] hover:border-[#1C1917]"
+          >
+            Browse 50 Essays
+          </a>
+        </div>
+      </main>
+    );
+  };
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[#FBF9F5] text-[#1C1917]">
+      <Header
+        currentPath={normalizedPath}
+        onNavigate={navigate}
+        onOpenSearch={() => setSearchOpen(true)}
+      />
+      <div className="flex-1">{renderRoute()}</div>
+      <Footer onNavigate={navigate} />
+      <SearchOverlay
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={navigate}
+      />
+    </div>
+  );
+}

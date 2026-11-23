@@ -1,0 +1,6 @@
+{
+  "name": "The Meridian Review",
+  "description": "An independent Western broadsheet and research journal engineered for Google Search E-E-A-T, Schema.org structured data, and Gemini generative retrieval, featuring 50 in-depth essays.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
