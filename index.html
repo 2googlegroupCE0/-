@@ -1,32 +1,34 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Meridian Review – Independent Journalism, Research &amp; Analysis</title>
+    <title>SEO 与 GEO 研究院 – 搜索引擎与生成式引擎优化实证论文库</title>
     <meta
       name="description"
-      content="Explore 50 peer-reviewed essays across technology, global economics, design, climate science, and digital society, engineered for Google Search and Gemini."
+      content="SEO 与 GEO 研究院专注于搜索引擎工程（SEO）与生成式引擎优化（GEO），提供涵盖技术架构、结构化数据、质量评估与搜索增长的双语研究报告。"
     />
     <meta
       name="robots"
       content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
     />
-    <meta name="author" content="The Meridian Review Editorial Board" />
+    <meta name="author" content="SEO 与 GEO 研究院学术委员会" />
     <meta name="theme-color" content="#FBF9F5" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!--SSR_CANONICAL_SLOT-->
 
     <!-- OpenGraph -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="The Meridian Review" />
-    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="SEO 与 GEO 研究院" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:locale:alternate" content="en_US" />
     <meta
       property="og:title"
-      content="The Meridian Review – Independent Journalism, Research &amp; Analysis"
+      content="SEO 与 GEO 研究院 – 搜索引擎与生成式引擎优化实证论文库"
     />
     <meta
       property="og:description"
-      content="Explore 50 peer-reviewed essays across technology, global economics, design, climate science, and digital society, engineered for Google Search and Gemini."
+      content="SEO 与 GEO 研究院专注于搜索引擎工程（SEO）与生成式引擎优化（GEO），提供涵盖技术架构、结构化数据、质量评估与搜索增长的双语研究报告。"
     />
     <meta property="og:image" content="/src/assets/images/editorial_hero_architecture_1795444152682.jpg" />
 
@@ -34,40 +36,41 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="The Meridian Review – Independent Journalism, Research &amp; Analysis"
+      content="SEO 与 GEO 研究院 – 搜索引擎与生成式引擎优化实证论文库"
     />
     <meta
       name="twitter:description"
-      content="Explore 50 peer-reviewed essays across technology, global economics, design, climate science, and digital society, engineered for Google Search and Gemini."
+      content="SEO 与 GEO 研究院专注于搜索引擎工程（SEO）与生成式引擎优化（GEO），提供涵盖技术架构、结构化数据、质量评估与搜索增长的双语研究报告。"
     />
     <meta name="twitter:image" content="/src/assets/images/editorial_hero_architecture_1795444152682.jpg" />
 
-    <!-- Google Fonts: Playfair Display (Display Serif) + Plus Jakarta Sans (Body/UI) + JetBrains Mono (Code/Tabular) -->
+    <!-- Google Fonts: Playfair Display + Noto Serif SC (Editorial Serif), Plus Jakarta Sans + Noto Sans SC (Body/UI), JetBrains Mono (Tabular/Code) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
 
     <!--SSR_JSONLD_SLOT-->
-    <script type="application/ld+json">
+    <script id="meridian-jsonld" type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@graph": [
           {
-            "@type": "NewsMediaOrganization",
+            "@type": ["ResearchOrganization", "NewsMediaOrganization"],
             "@id": "/#organization",
-            "name": "The Meridian Review",
+            "name": "SEO 与 GEO 研究院",
             "url": "/",
-            "description": "Independent broadsheet and research journal covering technology, economics, design, climate science, and digital society.",
+            "description": "专注搜索引擎优化（SEO）与生成式引擎优化（GEO）的独立双语实践平台，提供 175 篇核心专题指南（覆盖全行业 150 大细分门类与 10 大国产大模型）及交互式合规工具。",
             "publishingPrinciples": "/standards"
           },
           {
             "@type": "WebSite",
             "@id": "/#website",
-            "name": "The Meridian Review",
+            "name": "SEO 与 GEO 研究院",
             "url": "/",
+            "inLanguage": ["zh-CN", "en-US"],
             "publisher": {
               "@id": "/#organization"
             },

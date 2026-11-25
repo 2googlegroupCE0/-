@@ -1,39 +1,52 @@
 import { useState, type MouseEvent } from 'react';
 import { Menu, Search, X } from 'lucide-react';
+import type { Locale } from '../types/editorial.ts';
+import { UI_COPY } from '../data/i18n.ts';
+import { withLocalePrefix } from '../data/articlesLocalized.ts';
 
 interface HeaderProps {
-  currentPath: string;
+  locale: Locale;
+  currentBasePath: string;
   onNavigate: (path: string) => void;
   onOpenSearch: () => void;
 }
 
-const NAV_ITEMS = [
-  { label: 'Front Page', path: '/' },
-  { label: 'Archive', path: '/archive' },
-  { label: 'Authors', path: '/authors' },
-  { label: 'SEO & GEO', path: '/standards' },
-];
-
-export function Header({ currentPath, onNavigate, onOpenSearch }: HeaderProps) {
+export function Header({
+  locale,
+  currentBasePath,
+  onNavigate,
+  onOpenSearch,
+}: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const copy = UI_COPY[locale];
 
-  const handleLinkClick = (e: MouseEvent<HTMLAnchorElement>, path: string) => {
+  const navItems = [
+    { label: copy.navFrontPage, basePath: '/' },
+    { label: copy.navArchive, basePath: '/archive' },
+    { label: copy.navTools, basePath: '/tools' },
+    { label: copy.navAuthors, basePath: '/authors' },
+    { label: copy.navStandards, basePath: '/standards' },
+  ];
+
+  const handleLinkClick = (e: MouseEvent<HTMLAnchorElement>, target: string) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     setMobileMenuOpen(false);
-    onNavigate(path);
+    onNavigate(target);
   };
+
+  const homeHref = withLocalePrefix('/', locale);
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#E2DDD3] bg-[#FBF9F5]/95 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-8 px-4 sm:px-6 lg:px-8">
         {/* Zone 1: Single text element wordmark */}
         <a
-          href="/"
-          onClick={(e) => handleLinkClick(e, '/')}
+          href={homeHref}
+          onClick={(e) => handleLinkClick(e, homeHref)}
           className="font-serif text-xl font-semibold tracking-tight text-[#1C1917] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1E3A8A]"
         >
-          The Meridian Review
+          {copy.brandName}
         </a>
 
         {/* Zone 2: Clean single-line text navigation links */}
@@ -41,16 +54,17 @@ export function Header({ currentPath, onNavigate, onOpenSearch }: HeaderProps) {
           aria-label="Primary Navigation"
           className="hidden md:flex items-center gap-7 text-sm font-medium text-[#57534E]"
         >
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
+            const href = withLocalePrefix(item.basePath, locale);
             const isActive =
-              item.path === '/'
-                ? currentPath === '/'
-                : currentPath.startsWith(item.path);
+              item.basePath === '/'
+                ? currentBasePath === '/'
+                : currentBasePath.startsWith(item.basePath);
             return (
               <a
-                key={item.path}
-                href={item.path}
-                onClick={(e) => handleLinkClick(e, item.path)}
+                key={item.basePath}
+                href={href}
+                onClick={(e) => handleLinkClick(e, href)}
                 className={`whitespace-nowrap shrink-0 py-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1E3A8A] ${
                   isActive
                     ? 'border-b border-[#1C1917] text-[#1C1917]'
@@ -69,10 +83,10 @@ export function Header({ currentPath, onNavigate, onOpenSearch }: HeaderProps) {
             type="button"
             onClick={onOpenSearch}
             className="inline-flex min-h-[40px] items-center gap-2 rounded-md border border-[#D6D0C4] bg-[#F5F1E9] px-4 py-2 text-xs font-medium text-[#1C1917] whitespace-nowrap shrink-0 transition-colors duration-150 hover:border-[#1C1917] hover:bg-[#EBE6DF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E3A8A]"
-            aria-label="Search 50-article archive"
+            aria-label={copy.searchPlaceholder}
           >
             <Search className="h-3.5 w-3.5 text-[#57534E]" strokeWidth={1.75} />
-            <span>Search</span>
+            <span>{copy.searchButton}</span>
           </button>
 
           <button
@@ -93,16 +107,17 @@ export function Header({ currentPath, onNavigate, onOpenSearch }: HeaderProps) {
           className="border-t border-[#E2DDD3] bg-[#FBF9F5] px-4 py-3 md:hidden"
         >
           <div className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
+              const href = withLocalePrefix(item.basePath, locale);
               const isActive =
-                item.path === '/'
-                  ? currentPath === '/'
-                  : currentPath.startsWith(item.path);
+                item.basePath === '/'
+                  ? currentBasePath === '/'
+                  : currentBasePath.startsWith(item.basePath);
               return (
                 <a
-                  key={item.path}
-                  href={item.path}
-                  onClick={(e) => handleLinkClick(e, item.path)}
+                  key={item.basePath}
+                  href={href}
+                  onClick={(e) => handleLinkClick(e, href)}
                   className={`flex min-h-[44px] items-center px-2 text-sm font-medium whitespace-nowrap ${
                     isActive ? 'text-[#1E3A8A]' : 'text-[#44403C]'
                   }`}

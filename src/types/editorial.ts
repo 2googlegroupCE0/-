@@ -1,9 +1,85 @@
+export type Locale = 'zh' | 'en';
+
 export type SectionSlug =
-  | 'technology-and-search'
-  | 'global-economy'
-  | 'design-and-craft'
-  | 'science-and-climate'
-  | 'culture-and-society';
+  | 'china-llm-geo'
+  | 'technical-seo'
+  | 'generative-geo'
+  | 'schema-semantics'
+  | 'eeat-evaluation'
+  | 'search-analytics';
+
+export const CHINA_INDUSTRY_PILLAR_COUNT = 150;
+export const CHINA_PLATFORM_PILLAR_COUNT = 10;
+export const FOUNDATION_PILLAR_COUNT = 15;
+export const TOTAL_ARTICLE_COUNT =
+  CHINA_INDUSTRY_PILLAR_COUNT + CHINA_PLATFORM_PILLAR_COUNT + FOUNDATION_PILLAR_COUNT;
+
+export interface IndustryHeadlineSpec {
+  titleZh: string;
+  titleEn: string;
+  subtitleZh: string;
+  subtitleEn: string;
+  directAnswerZh: string;
+  directAnswerEn: string;
+  headingsZh: [string, string, string, string];
+  headingsEn: [string, string, string, string];
+}
+
+export interface PlatformHeadlineSpec {
+  titleZh: string;
+  titleEn: string;
+  subtitleZh: string;
+  subtitleEn: string;
+  directAnswerZh: string;
+  directAnswerEn: string;
+  headingsZh: [string, string, string];
+  headingsEn: [string, string];
+}
+
+export interface IndustryNarrativeCore {
+  plainStoryZh: string;
+  plainStoryEn: string;
+  aiVsSearchZh: string;
+  aiVsSearchEn: string;
+  badCopyZh: string;
+  goodCopyZh: string;
+  badCopyEn: string;
+  goodCopyEn: string;
+  actionStepsZh: [string, string, string];
+  actionStepsEn: [string, string, string];
+  practitionerNoteZh: string;
+  practitionerNoteEn: string;
+  customMetrics: Array<{
+    labelZh: string;
+    valueZh: string;
+    contextZh: string;
+    labelEn: string;
+    valueEn: string;
+    contextEn: string;
+  }>;
+}
+
+export type IndustryTupleSpec = [
+  key: string,
+  groupZh: string,
+  groupEn: string,
+  zh: string,
+  en: string,
+  schemaType: string,
+  samplePromptZh: string,
+  samplePromptEn: string,
+  trustSourcesZh: string,
+  shortBottleneckZh: string,
+  shortSolutionZh: string,
+  complianceRiskZh: string,
+  priceMenuHintZh: string,
+];
+
+export interface ExtraChinaIndustryBundle {
+  tuple: IndustryTupleSpec;
+  headline: IndustryHeadlineSpec;
+  narrative: IndustryNarrativeCore;
+}
 
 export interface SectionInfo {
   slug: SectionSlug;
@@ -50,9 +126,13 @@ export interface ArticleSectionBlock {
   heading: string;
   paragraphs: string[];
   metrics?: ArticleMetricRow[];
+  codeSnippet?: {
+    label: string;
+    code: string;
+  };
 }
 
-export interface Article {
+export interface ArticleSummary {
   id: number;
   slug: string;
   title: string;
@@ -70,10 +150,29 @@ export interface Article {
   imageAlt: string;
   imageCaption: string;
   directAnswer: string;
+  keywords: string[];
+  industryKey?: string;
+  platformKey?: string;
+}
+
+export interface Article extends ArticleSummary {
   keyTakeaways: string[];
   sections: ArticleSectionBlock[];
   pullQuote: string;
   faqs: ArticleFaq[];
   citations: ArticleCitation[];
+}
+
+export interface ArticleLocalization {
+  title: string;
+  subtitle: string;
+  reviewerName?: string;
+  imageAlt: string;
+  imageCaption: string;
+  directAnswer: string;
+  keyTakeaways: string[];
+  sections: ArticleSectionBlock[];
+  pullQuote: string;
+  faqs: ArticleFaq[];
   keywords: string[];
 }

@@ -1,60 +1,73 @@
 import { useMemo, useState, type MouseEvent } from 'react';
-import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
-import { ALL_ARTICLES } from '../data/articles.ts';
-import { AUTHORS_BY_ID } from '../data/authors.ts';
-import { SECTIONS, SECTIONS_BY_SLUG } from '../data/sections.ts';
-import type { SectionSlug } from '../types/editorial.ts';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
+import type { Locale, SectionSlug } from '../types/editorial.ts';
+import { UI_COPY } from '../data/i18n.ts';
+import {
+  CHINA_INDUSTRIES,
+  buildSlugForId,
+  getFeaturedArticles,
+  getLocalizedAuthorById,
+  getLocalizedSectionBySlug,
+  getLocalizedSections,
+  queryArticles,
+  withLocalePrefix,
+} from '../data/articlesLocalized.ts';
 import { EditorialImage } from '../components/EditorialImage.tsx';
+import { LanguageSwitch } from '../components/LanguageSwitch.tsx';
+import { PaginationBar } from '../components/PaginationBar.tsx';
 import { useDocumentSeo } from '../hooks/useDocumentSeo.ts';
 import { buildHomeJsonLd } from '../utils/seoSchema.ts';
 
 interface HomePageProps {
+  locale: Locale;
   onNavigate: (path: string) => void;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export function HomePage({ onNavigate }: HomePageProps) {
+export function HomePage({ locale, onNavigate }: HomePageProps) {
   const [activeSection, setActiveSection] = useState<'all' | SectionSlug>('all');
   const [page, setPage] = useState(1);
 
-  const leadArticle = useMemo(
-    () => ALL_ARTICLES.find((a) => a.isLead) ?? ALL_ARTICLES[0],
-    [],
-  );
+  const copy = UI_COPY[locale];
+  const sections = useMemo(() => getLocalizedSections(locale), [locale]);
+  const featuredList = useMemo(() => getFeaturedArticles(locale, 4), [locale]);
 
-  const secondaryFeatures = useMemo(
+  const leadArticle = featuredList[0];
+  const secondaryFeatures = featuredList.slice(1, 4);
+
+  const pageResult = useMemo(
     () =>
-      ALL_ARTICLES.filter((a) => a.featured && a.slug !== leadArticle.slug).slice(0, 3),
-    [leadArticle.slug],
-  );
-
-  const filteredArchive = useMemo(() => {
-    if (activeSection === 'all') return ALL_ARTICLES;
-    return ALL_ARTICLES.filter((a) => a.section === activeSection);
-  }, [activeSection]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredArchive.length / ITEMS_PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const visibleArchive = filteredArchive.slice(
-    (safePage - 1) * ITEMS_PER_PAGE,
-    safePage * ITEMS_PER_PAGE,
+      queryArticles({
+        locale,
+        section: activeSection,
+        page,
+        pageSize: ITEMS_PER_PAGE,
+      }),
+    [locale, activeSection, page],
   );
 
   const homeJsonLd = useMemo(
     () =>
       buildHomeJsonLd(
-        [leadArticle, ...secondaryFeatures],
+        featuredList,
         typeof window !== 'undefined' ? window.location.origin : '',
+        locale,
       ),
-    [leadArticle, secondaryFeatures],
+    [featuredList, locale],
   );
 
   useDocumentSeo({
-    title: 'The Meridian Review – Independent Journalism, Research & Analysis',
+    title:
+      locale === 'zh'
+        ? 'SEO 与 GEO 研究院 – 搜索引擎与生成式引擎优化实证论文库'
+        : 'SEO & GEO Research Institute – Search & Generative Engine Studies',
     description:
-      'Explore 50 peer-reviewed essays across technology, global economics, design, climate science, and digital society, engineered for Google Search and Gemini.',
-    canonicalPath: '/',
+      locale === 'zh'
+        ? 'SEO 与 GEO 研究院专注于搜索引擎工程（SEO）与生成式引擎优化（GEO），提供涵盖技术架构、结构化数据、内容质量与搜索增长的系统化研究。'
+        : 'The SEO & GEO Research Institute publishes bilingual empirical studies across Technical SEO, Generative Engine Optimization, Structured Semantics, and Search Analytics.',
+    basePath: '/',
+    locale,
     imagePath: leadArticle.image,
     ogType: 'website',
     jsonLd: homeJsonLd,
@@ -66,51 +79,54 @@ export function HomePage({ onNavigate }: HomePageProps) {
     onNavigate(path);
   };
 
-  const leadAuthor = AUTHORS_BY_ID[leadArticle.authorId];
-  const leadSection = SECTIONS_BY_SLUG[leadArticle.section];
+  const leadAuthor = getLocalizedAuthorById(leadArticle.authorId, locale);
+  const leadSection = getLocalizedSectionBySlug(leadArticle.section, locale);
+  const leadHref = withLocalePrefix(`/articles/${leadArticle.slug}`, locale);
+  const leadSectionHref = withLocalePrefix(`/section/${leadSection.slug}`, locale);
+  const leadAuthorHref = `${withLocalePrefix('/authors', locale)}#${leadAuthor.id}`;
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:px-8">
-      {/* Operational Broadsheet Masthead Strip (inside main, never inside header) */}
+      {/* Operational Broadsheet Masthead Strip with Bilingual Switch */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1C1917] py-3 text-xs text-[#57534E]">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-[#1C1917]">Vol. IV · Issue 47</span>
+          <span className="font-medium text-[#1C1917]">{copy.mastheadVolume}</span>
           <span aria-hidden="true">·</span>
-          <time dateTime="2026-11-23">November 23, 2026</time>
+          <time dateTime="2026-11-24">{copy.mastheadDate}</time>
           <span aria-hidden="true">·</span>
-          <span>Zurich &amp; London Desk</span>
+          <span>{copy.mastheadLocation}</span>
         </div>
-        <div className="flex flex-wrap items-center gap-2 tabular-nums">
-          <span>50 Peer-Reviewed Essays</span>
-          <span aria-hidden="true">·</span>
-          <span>Schema.org &amp; llms.txt Verified</span>
+        <div className="flex flex-wrap items-center gap-3 tabular-nums">
+          <span className="hidden sm:inline">{copy.mastheadEssaysCount}</span>
+          <span aria-hidden="true" className="hidden sm:inline">·</span>
+          <LanguageSwitch locale={locale} basePath="/" onNavigate={onNavigate} />
         </div>
       </div>
 
       {/* Tier 1: Dominant Lead Story Asymmetric Hero */}
-      <section aria-label="Lead Story" className="border-b border-[#D6D0C4] py-10 lg:py-14">
+      <section aria-label={copy.leadBadge} className="border-b border-[#D6D0C4] py-10 lg:py-14">
         <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-12 lg:gap-12">
           <div className="flex flex-col justify-between lg:col-span-6">
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#57534E]">
                 <a
-                  href={`/section/${leadSection.slug}`}
-                  onClick={(e) => handleLink(e, `/section/${leadSection.slug}`)}
+                  href={leadSectionHref}
+                  onClick={(e) => handleLink(e, leadSectionHref)}
                   className="text-[#1E3A8A] hover:underline"
                 >
                   {leadSection.name}
                 </a>
                 <span aria-hidden="true">·</span>
-                <span>Lead Essay</span>
+                <span>{copy.leadBadge}</span>
                 <span aria-hidden="true">·</span>
-                <span className="tabular-nums">{leadArticle.readTimeMinutes} min read</span>
+                <span className="tabular-nums">{copy.minRead(leadArticle.readTimeMinutes)}</span>
               </div>
 
-              <h1 className="editorial-balance mt-4 font-serif text-4xl font-semibold leading-[1.12] tracking-tight text-[#1C1917] sm:text-5xl">
+              <h1 className="editorial-balance mt-4 font-serif text-3xl font-semibold leading-[1.18] tracking-tight text-[#1C1917] sm:text-4xl lg:text-[2.75rem]">
                 <a
-                  href={`/articles/${leadArticle.slug}`}
-                  onClick={(e) => handleLink(e, `/articles/${leadArticle.slug}`)}
-                  className="hover:text-[#1E3A8A] transition-colors duration-150"
+                  href={leadHref}
+                  onClick={(e) => handleLink(e, leadHref)}
+                  className="transition-colors duration-150 hover:text-[#1E3A8A]"
                 >
                   {leadArticle.title}
                 </a>
@@ -122,7 +138,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
               <div className="mt-6 border-y border-[#E2DDD3] py-4">
                 <p className="text-xs font-semibold tracking-wider text-[#57534E] uppercase">
-                  Direct Summary
+                  {copy.directSummaryLabel}
                 </p>
                 <p className="mt-1.5 text-sm leading-relaxed text-[#292524]">
                   {leadArticle.directAnswer}
@@ -133,29 +149,36 @@ export function HomePage({ onNavigate }: HomePageProps) {
             <div className="mt-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-xs text-[#57534E]">
                 <p className="font-medium text-[#1C1917]">
-                  By{' '}
+                  {copy.byLabel}
                   <a
-                    href={`/authors#${leadAuthor?.id}`}
-                    onClick={(e) => handleLink(e, `/authors#${leadAuthor?.id}`)}
+                    href={leadAuthorHref}
+                    onClick={(e) => handleLink(e, leadAuthorHref)}
                     className="hover:text-[#1E3A8A] hover:underline"
                   >
-                    {leadAuthor?.name}
+                    {leadAuthor.name}
                   </a>
                 </p>
                 <p className="mt-0.5 text-[#78716C]">
-                  Fact-checked by {leadArticle.reviewerName} · Updated{' '}
+                  {copy.factCheckedBy(leadArticle.reviewerName)} · {copy.updatedLabel}{' '}
                   <time dateTime={leadArticle.updatedAt}>{leadArticle.updatedAt}</time>
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
                 <a
-                  href={`/articles/${leadArticle.slug}`}
-                  onClick={(e) => handleLink(e, `/articles/${leadArticle.slug}`)}
+                  href={leadHref}
+                  onClick={(e) => handleLink(e, leadHref)}
                   className="inline-flex min-h-[40px] items-center gap-2 rounded-md bg-[#1C1917] px-5 py-2.5 text-xs font-medium text-[#FBF9F5] whitespace-nowrap transition-colors duration-150 hover:bg-[#1E3A8A]"
                 >
-                  <span>Read Essay</span>
+                  <span>{copy.readEssay}</span>
                   <ArrowRight className="h-3.5 w-3.5" />
+                </a>
+                <a
+                  href={withLocalePrefix('/tools', locale)}
+                  onClick={(e) => handleLink(e, withLocalePrefix('/tools', locale))}
+                  className="inline-flex min-h-[40px] items-center rounded-md border border-[#D6D0C4] bg-[#F5F1E9] px-4 py-2.5 text-xs font-medium text-[#1C1917] whitespace-nowrap transition-colors duration-150 hover:border-[#1C1917]"
+                >
+                  {copy.editorialBoardCta}
                 </a>
               </div>
             </div>
@@ -163,8 +186,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
           <figure className="flex flex-col justify-between lg:col-span-6">
             <a
-              href={`/articles/${leadArticle.slug}`}
-              onClick={(e) => handleLink(e, `/articles/${leadArticle.slug}`)}
+              href={leadHref}
+              onClick={(e) => handleLink(e, leadHref)}
               className="block h-full overflow-hidden rounded-sm border border-[#E2DDD3]"
             >
               <EditorialImage
@@ -182,29 +205,31 @@ export function HomePage({ onNavigate }: HomePageProps) {
       </section>
 
       {/* Tier 2: Secondary Featured Essays */}
-      <section aria-label="Featured Reports" className="border-b border-[#D6D0C4] py-12">
+      <section aria-label={copy.featuredDispatches} className="border-b border-[#D6D0C4] py-12">
         <div className="mb-8 flex items-baseline justify-between gap-4">
           <h2 className="font-serif text-2xl font-semibold tracking-tight text-[#1C1917]">
-            Featured Dispatches
+            {copy.featuredDispatches}
           </h2>
           <a
-            href="/archive"
-            onClick={(e) => handleLink(e, '/archive')}
+            href={withLocalePrefix('/archive', locale)}
+            onClick={(e) => handleLink(e, withLocalePrefix('/archive', locale))}
             className="text-xs font-medium text-[#1E3A8A] hover:underline whitespace-nowrap"
           >
-            View All 50 Essays
+            {copy.viewAllCorpus}
           </a>
         </div>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-10">
           {secondaryFeatures.map((article) => {
-            const section = SECTIONS_BY_SLUG[article.section];
-            const author = AUTHORS_BY_ID[article.authorId];
+            const section = getLocalizedSectionBySlug(article.section, locale);
+            const author = getLocalizedAuthorById(article.authorId, locale);
+            const articleHref = withLocalePrefix(`/articles/${article.slug}`, locale);
+            const secHref = withLocalePrefix(`/section/${section.slug}`, locale);
             return (
               <article key={article.slug} className="group flex flex-col">
                 <a
-                  href={`/articles/${article.slug}`}
-                  onClick={(e) => handleLink(e, `/articles/${article.slug}`)}
+                  href={articleHref}
+                  onClick={(e) => handleLink(e, articleHref)}
                   className="block overflow-hidden rounded-sm border border-[#E2DDD3]"
                 >
                   <EditorialImage
@@ -215,23 +240,23 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 </a>
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#57534E]">
                   <a
-                    href={`/section/${section.slug}`}
-                    onClick={(e) => handleLink(e, `/section/${section.slug}`)}
+                    href={secHref}
+                    onClick={(e) => handleLink(e, secHref)}
                     className="font-medium text-[#1E3A8A] hover:underline"
                   >
                     {section.name}
                   </a>
                   <span aria-hidden="true">·</span>
-                  <span className="tabular-nums">{article.readTimeMinutes} min read</span>
+                  <span className="tabular-nums">{copy.minRead(article.readTimeMinutes)}</span>
                   <span aria-hidden="true">·</span>
                   <time dateTime={article.updatedAt}>{article.updatedAt}</time>
                 </div>
 
                 <h3 className="editorial-balance mt-2 font-serif text-xl font-semibold leading-snug text-[#1C1917]">
                   <a
-                    href={`/articles/${article.slug}`}
-                    onClick={(e) => handleLink(e, `/articles/${article.slug}`)}
-                    className="group-hover:text-[#1E3A8A] transition-colors duration-150"
+                    href={articleHref}
+                    onClick={(e) => handleLink(e, articleHref)}
+                    className="transition-colors duration-150 group-hover:text-[#1E3A8A]"
                   >
                     {article.title}
                   </a>
@@ -242,7 +267,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 </p>
 
                 <p className="mt-4 text-xs font-medium text-[#44403C]">
-                  By {author?.name}
+                  {copy.byLabel}
+                  {author.name}
                 </p>
               </article>
             );
@@ -250,21 +276,21 @@ export function HomePage({ onNavigate }: HomePageProps) {
         </div>
       </section>
 
-      {/* Tier 3: Complete 50-Article Broadsheet Index with Section Filters */}
-      <section aria-label="50-Article Editorial Index" className="border-b border-[#D6D0C4] py-12">
+      {/* Tier 3: Curated 175-Guide Index with Division Tabs & Pagination */}
+      <section aria-label={copy.completeIndexTitle} className="border-b border-[#D6D0C4] py-12">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="font-serif text-2xl font-semibold tracking-tight text-[#1C1917]">
-              Complete Editorial Index
+              {copy.completeIndexTitle}
             </h2>
             <p className="mt-1.5 max-w-2xl text-sm text-[#57534E]">
-              Every built-in essay includes an answer-first executive summary, Schema.org graph markup, structured data tables, and primary institutional citations.
+              {copy.completeIndexDesc}
             </p>
           </div>
 
           <div
             role="tablist"
-            aria-label="Filter archive by editorial section"
+            aria-label={copy.completeIndexTitle}
             className="flex flex-wrap items-center gap-1 rounded-md border border-[#E2DDD3] bg-[#F5F1E9] p-1"
           >
             <button
@@ -281,9 +307,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   : 'text-[#57534E] hover:text-[#1C1917]'
               }`}
             >
-              All Essays (50)
+              {copy.allEssaysTab}
             </button>
-            {SECTIONS.map((sec) => (
+            {sections.map((sec) => (
               <button
                 key={sec.slug}
                 type="button"
@@ -305,10 +331,51 @@ export function HomePage({ onNavigate }: HomePageProps) {
           </div>
         </div>
 
-        <div className="mt-8 divide-y divide-[#E2DDD3] border-y border-[#E2DDD3]">
-          {visibleArchive.map((article) => {
-            const section = SECTIONS_BY_SLUG[article.section];
-            const author = AUTHORS_BY_ID[article.authorId];
+        {/* Direct internal links to flagship China industry pillar guides across sectors */}
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[#E2DDD3] pt-4 text-xs">
+          <span className="font-medium text-[#57534E]">{copy.quickIndustriesTitle}</span>
+          {[
+            'tcm-clinic',
+            'foot-spa',
+            'catering-dining',
+            'mining-equipment',
+            'robotics-automation',
+            'custom-software-dev',
+            'ai-knowledge-deploy',
+            'ip-trademark-patent',
+            'health-checkup-center',
+            'industry-association',
+          ].map((key) => {
+            const idx = CHINA_INDUSTRIES.findIndex((i) => i.key === key);
+            if (idx === -1) return null;
+            const ind = CHINA_INDUSTRIES[idx];
+            const href = withLocalePrefix(`/articles/${buildSlugForId(idx + 1)}`, locale);
+            return (
+              <a
+                key={ind.key}
+                href={href}
+                onClick={(e) => handleLink(e, href)}
+                className="text-[#44403C] transition-colors hover:text-[#1E3A8A] hover:underline whitespace-nowrap"
+              >
+                {locale === 'zh' ? ind.zh : ind.en}
+              </a>
+            );
+          })}
+          <a
+            href={withLocalePrefix('/section/china-llm-geo', locale)}
+            onClick={(e) => handleLink(e, withLocalePrefix('/section/china-llm-geo', locale))}
+            className="font-medium text-[#1E3A8A] hover:underline whitespace-nowrap"
+          >
+            {copy.browseAllIndustries}
+          </a>
+        </div>
+
+        <div className="mt-6 divide-y divide-[#E2DDD3] border-y border-[#E2DDD3]">
+          {pageResult.items.map((article) => {
+            const section = getLocalizedSectionBySlug(article.section, locale);
+            const author = getLocalizedAuthorById(article.authorId, locale);
+            const articleHref = withLocalePrefix(`/articles/${article.slug}`, locale);
+            const secHref = withLocalePrefix(`/section/${section.slug}`, locale);
             return (
               <article
                 key={article.slug}
@@ -316,11 +383,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
               >
                 <div className="flex items-center gap-3 md:col-span-3">
                   <span className="font-mono text-xs tabular-nums text-[#78716C]">
-                    {String(article.id).padStart(2, '0')}
+                    {String(article.id).padStart(5, '0')}
                   </span>
                   <a
-                    href={`/section/${section.slug}`}
-                    onClick={(e) => handleLink(e, `/section/${section.slug}`)}
+                    href={secHref}
+                    onClick={(e) => handleLink(e, secHref)}
                     className="text-xs font-medium text-[#1E3A8A] hover:underline whitespace-nowrap"
                   >
                     {section.name}
@@ -330,9 +397,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 <div className="md:col-span-6">
                   <h3 className="font-serif text-lg font-semibold leading-snug text-[#1C1917]">
                     <a
-                      href={`/articles/${article.slug}`}
-                      onClick={(e) => handleLink(e, `/articles/${article.slug}`)}
-                      className="group-hover:text-[#1E3A8A] transition-colors duration-150"
+                      href={articleHref}
+                      onClick={(e) => handleLink(e, articleHref)}
+                      className="transition-colors duration-150 group-hover:text-[#1E3A8A]"
                     >
                       {article.title}
                     </a>
@@ -344,15 +411,15 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
                 <div className="flex items-center justify-between gap-4 text-xs text-[#57534E] md:col-span-3 md:justify-end">
                   <div className="text-left md:text-right">
-                    <p className="font-medium text-[#292524]">{author?.name}</p>
+                    <p className="font-medium text-[#292524]">{author.name}</p>
                     <p className="tabular-nums text-[#78716C]">
-                      {article.updatedAt} · {article.readTimeMinutes} min
+                      {article.updatedAt} · {copy.minRead(article.readTimeMinutes)}
                     </p>
                   </div>
                   <a
-                    href={`/articles/${article.slug}`}
-                    onClick={(e) => handleLink(e, `/articles/${article.slug}`)}
-                    aria-label={`Read ${article.title}`}
+                    href={articleHref}
+                    onClick={(e) => handleLink(e, articleHref)}
+                    aria-label={`${copy.readEssay}: ${article.title}`}
                     className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[#E2DDD3] text-[#44403C] transition-colors group-hover:border-[#1E3A8A] group-hover:text-[#1E3A8A]"
                   >
                     <ArrowUpRight className="h-3.5 w-3.5" />
@@ -363,82 +430,45 @@ export function HomePage({ onNavigate }: HomePageProps) {
           })}
         </div>
 
-        {/* Clean Pagination */}
-        <div className="mt-6 flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <p className="text-xs text-[#57534E] tabular-nums">
-            Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–
-            {Math.min(safePage * ITEMS_PER_PAGE, filteredArchive.length)} of{' '}
-            {filteredArchive.length} essays
-          </p>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              disabled={safePage <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex min-h-[36px] items-center gap-1 rounded border border-[#D6D0C4] px-3 py-1.5 text-xs font-medium text-[#1C1917] disabled:opacity-40 hover:bg-[#F5F1E9]"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              <span>Previous</span>
-            </button>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-              <button
-                key={pageNum}
-                type="button"
-                onClick={() => setPage(pageNum)}
-                className={`min-h-[36px] min-w-[36px] rounded border px-2.5 py-1.5 font-mono text-xs tabular-nums transition-colors ${
-                  pageNum === safePage
-                    ? 'border-[#1C1917] bg-[#1C1917] text-[#FBF9F5]'
-                    : 'border-[#D6D0C4] text-[#44403C] hover:bg-[#F5F1E9]'
-                }`}
-              >
-                {pageNum}
-              </button>
-            ))}
-
-            <button
-              type="button"
-              disabled={safePage >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="inline-flex min-h-[36px] items-center gap-1 rounded border border-[#D6D0C4] px-3 py-1.5 text-xs font-medium text-[#1C1917] disabled:opacity-40 hover:bg-[#F5F1E9]"
-            >
-              <span>Next</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
+        <PaginationBar
+          locale={locale}
+          page={pageResult.page}
+          pageSize={ITEMS_PER_PAGE}
+          totalItems={pageResult.totalMatched}
+          totalPages={pageResult.totalPages}
+          onPageChange={setPage}
+        />
       </section>
 
       {/* Section Architecture & SEO/GEO Standards Strip */}
-      <section aria-label="Search and Gemini Architecture" className="pt-12">
+      <section aria-label={copy.standardsEyebrow} className="pt-12">
         <div className="grid grid-cols-1 gap-8 rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-6 sm:p-8 lg:grid-cols-12 lg:items-center">
           <div className="lg:col-span-7">
             <p className="text-xs font-semibold tracking-wider text-[#9A3412] uppercase">
-              Editorial &amp; Technical Standards
+              {copy.standardsEyebrow}
             </p>
             <h2 className="editorial-balance mt-2 font-serif text-2xl font-semibold text-[#1C1917] sm:text-3xl">
-              Engineered for Google Search E-E-A-T and Gemini Grounding
+              {copy.standardsBannerTitle}
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#44403C]">
-              Every route serves server-injected canonical metadata, linked NewsArticle and FAQPage JSON-LD graphs, verified author credentials, XML image sitemaps, and clean Markdown directories at /llms.txt.
+              {copy.standardsBannerDesc}
             </p>
           </div>
           <div className="flex flex-wrap gap-3 lg:col-span-5 lg:justify-end">
             <a
-              href="/standards"
-              onClick={(e) => handleLink(e, '/standards')}
+              href={withLocalePrefix('/standards', locale)}
+              onClick={(e) => handleLink(e, withLocalePrefix('/standards', locale))}
               className="inline-flex min-h-[40px] items-center gap-2 rounded-md bg-[#1E3A8A] px-5 py-2.5 text-xs font-medium text-white whitespace-nowrap transition-colors hover:bg-[#172D6B]"
             >
-              <span>Inspect Live SEO &amp; GEO</span>
+              <span>{copy.inspectStandardsCta}</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </a>
             <a
-              href="/authors"
-              onClick={(e) => handleLink(e, '/authors')}
+              href={withLocalePrefix('/tools', locale)}
+              onClick={(e) => handleLink(e, withLocalePrefix('/tools', locale))}
               className="inline-flex min-h-[40px] items-center rounded-md border border-[#D6D0C4] bg-[#FBF9F5] px-5 py-2.5 text-xs font-medium text-[#1C1917] whitespace-nowrap transition-colors hover:border-[#1C1917]"
             >
-              Editorial Board
+              {copy.editorialBoardCta}
             </a>
           </div>
         </div>

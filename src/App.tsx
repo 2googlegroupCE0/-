@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ARTICLES_BY_SLUG } from './data/articles.ts';
-import { SECTIONS_BY_SLUG } from './data/sections.ts';
+import {
+  getArticleBySlug,
+  getLocalizedSections,
+  resolveLegacySlugRedirect,
+  stripLocalePrefix,
+  withLocalePrefix,
+} from './data/articlesLocalized.ts';
+import { UI_COPY } from './data/i18n.ts';
 import type { SectionSlug } from './types/editorial.ts';
 import { Header } from './components/Header.tsx';
 import { Footer } from './components/Footer.tsx';
@@ -9,6 +15,7 @@ import { HomePage } from './pages/HomePage.tsx';
 import { ArchivePage } from './pages/ArchivePage.tsx';
 import { ArticlePage } from './pages/ArticlePage.tsx';
 import { AuthorsPage } from './pages/AuthorsPage.tsx';
+import { GeoToolkitPage } from './pages/GeoToolkitPage.tsx';
 import { StandardsPage } from './pages/StandardsPage.tsx';
 
 export default function App() {
@@ -57,71 +64,122 @@ export default function App() {
   }, []);
 
   const [pathnameOnly, searchQuery] = locationPath.split('?');
-  const normalizedPath = pathnameOnly.replace(/\/+$/, '') || '/';
+  const { locale, basePath } = stripLocalePrefix(pathnameOnly || '/');
   const queryParams = new URLSearchParams(searchQuery || '');
   const initialQuery = queryParams.get('q') || '';
+  const initialAuthorId = queryParams.get('author') || '';
+  const initialIndustry = queryParams.get('industry') || '';
+  const initialPlatform = queryParams.get('platform') || '';
+  const copy = UI_COPY[locale];
 
   const renderRoute = () => {
-    if (normalizedPath === '/') {
-      return <HomePage onNavigate={navigate} />;
+    if (basePath === '/') {
+      return <HomePage locale={locale} onNavigate={navigate} />;
     }
 
-    if (normalizedPath === '/archive') {
-      return <ArchivePage initialQuery={initialQuery} onNavigate={navigate} />;
+    if (basePath === '/archive') {
+      return (
+        <ArchivePage
+          locale={locale}
+          initialQuery={initialQuery}
+          initialAuthorId={initialAuthorId}
+          initialIndustry={initialIndustry}
+          initialPlatform={initialPlatform}
+          onNavigate={navigate}
+        />
+      );
     }
 
-    if (normalizedPath.startsWith('/section/')) {
-      const slug = normalizedPath.replace('/section/', '') as SectionSlug;
-      if (SECTIONS_BY_SLUG[slug]) {
-        return <ArchivePage sectionSlug={slug} onNavigate={navigate} />;
+    if (basePath.startsWith('/section/')) {
+      const slug = basePath.replace('/section/', '') as SectionSlug;
+      const valid = getLocalizedSections(locale).some((s) => s.slug === slug);
+      if (valid) {
+        return (
+          <ArchivePage
+            locale={locale}
+            sectionSlug={slug}
+            initialQuery={initialQuery}
+            initialAuthorId={initialAuthorId}
+            initialIndustry={initialIndustry}
+            initialPlatform={initialPlatform}
+            onNavigate={navigate}
+          />
+        );
       }
     }
 
-    if (normalizedPath.startsWith('/articles/')) {
-      const slug = normalizedPath.replace('/articles/', '');
-      const article = ARTICLES_BY_SLUG[slug];
-      if (article) {
-        return <ArticlePage article={article} onNavigate={navigate} />;
+    if (basePath.startsWith('/articles/')) {
+      const slug = basePath.replace('/articles/', '');
+      const directArticle = getArticleBySlug(slug, locale);
+      if (directArticle) {
+        return (
+          <ArticlePage
+            article={directArticle}
+            locale={locale}
+            onNavigate={navigate}
+          />
+        );
+      }
+      const redirectedSlug = resolveLegacySlugRedirect(slug);
+      if (redirectedSlug) {
+        const consolidated = getArticleBySlug(redirectedSlug, locale);
+        if (consolidated) {
+          return (
+            <ArticlePage
+              article={consolidated}
+              locale={locale}
+              onNavigate={navigate}
+            />
+          );
+        }
       }
     }
 
-    if (normalizedPath === '/authors') {
-      return <AuthorsPage onNavigate={navigate} />;
+    if (basePath === '/tools') {
+      return (
+        <GeoToolkitPage
+          locale={locale}
+          initialIndustry={initialIndustry}
+          onNavigate={navigate}
+        />
+      );
     }
 
-    if (normalizedPath === '/standards') {
-      return <StandardsPage onNavigate={navigate} />;
+    if (basePath === '/authors') {
+      return <AuthorsPage locale={locale} onNavigate={navigate} />;
+    }
+
+    if (basePath === '/standards') {
+      return <StandardsPage locale={locale} onNavigate={navigate} />;
     }
 
     return (
       <main className="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6">
         <p className="font-mono text-xs text-[#9A3412]">404 · PAGE NOT FOUND</p>
         <h1 className="mt-3 font-serif text-3xl font-semibold text-[#1C1917]">
-          This archival path could not be located.
+          {copy.notFoundTitle}
         </h1>
-        <p className="mt-3 text-sm text-[#57534E]">
-          Return to the Front Page or browse all 50 indexed essays in the archive.
-        </p>
+        <p className="mt-3 text-sm text-[#57534E]">{copy.notFoundDesc}</p>
         <div className="mt-8 flex items-center justify-center gap-4">
           <a
-            href="/"
+            href={withLocalePrefix('/', locale)}
             onClick={(e) => {
               e.preventDefault();
-              navigate('/');
+              navigate(withLocalePrefix('/', locale));
             }}
             className="rounded-md bg-[#1C1917] px-5 py-2.5 text-xs font-medium text-[#FBF9F5] hover:bg-[#1E3A8A]"
           >
-            Front Page
+            {copy.navFrontPage}
           </a>
           <a
-            href="/archive"
+            href={withLocalePrefix('/archive', locale)}
             onClick={(e) => {
               e.preventDefault();
-              navigate('/archive');
+              navigate(withLocalePrefix('/archive', locale));
             }}
             className="rounded-md border border-[#D6D0C4] px-5 py-2.5 text-xs font-medium text-[#1C1917] hover:border-[#1C1917]"
           >
-            Browse 50 Essays
+            {copy.navArchive}
           </a>
         </div>
       </main>
@@ -131,13 +189,19 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col bg-[#FBF9F5] text-[#1C1917]">
       <Header
-        currentPath={normalizedPath}
+        locale={locale}
+        currentBasePath={basePath}
         onNavigate={navigate}
         onOpenSearch={() => setSearchOpen(true)}
       />
       <div className="flex-1">{renderRoute()}</div>
-      <Footer onNavigate={navigate} />
+      <Footer
+        locale={locale}
+        currentBasePath={basePath}
+        onNavigate={navigate}
+      />
       <SearchOverlay
+        locale={locale}
         isOpen={searchOpen}
         onClose={() => setSearchOpen(false)}
         onNavigate={navigate}

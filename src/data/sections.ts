@@ -2,59 +2,70 @@ import type { SectionInfo, SectionSlug } from '../types/editorial.ts';
 
 export const SECTIONS: SectionInfo[] = [
   {
-    slug: 'technology-and-search',
-    name: 'Technology & Search',
-    shortName: 'Technology',
+    slug: 'china-llm-geo',
+    name: 'China LLM & Industry Playbooks',
+    shortName: 'China Industry GEO',
     description:
-      'Semantic web architecture, Google Search E-E-A-T engineering, Core Web Vitals, and generative retrieval optimization.',
+      'One authoritative field guide for each of China’s 150 verticals spanning all 20 GB/T 4754 national economy sectors, plus 10 deep-dive guides covering DeepSeek, Doubao, Tencent Yuanbao, Kimi, Qwen, and ERNIE.',
     curatorialNote:
-      'Reporting on how structured knowledge graphs, clean markup, and human-verified provenance govern modern search visibility.',
-    image: '/src/assets/images/section_ai_systems_1795444152985.jpg',
-    imageAlt: 'Brushed aluminum computing monoliths and optical glass prisms in a sunlit European research laboratory.',
-  },
-  {
-    slug: 'global-economy',
-    name: 'Global Economy',
-    shortName: 'Economy',
-    description:
-      'Industrial electrification, North Atlantic supply corridors, sovereign compute economics, and institutional capital markets.',
-    curatorialNote:
-      'Primary-source macroeconomics grounded in port throughput, capital expenditure filings, and central bank balance sheets.',
-    image: '/src/assets/images/section_global_economy_1795444152846.jpg',
-    imageAlt: 'Sunlit classical European financial exchange hall and travertine colonnade with afternoon shadows.',
-  },
-  {
-    slug: 'design-and-craft',
-    name: 'Design & Craft',
-    shortName: 'Design',
-    description:
-      'Swiss grid systems, broadsheet typography, archival reading ergonomics, and civic architectural restraint.',
-    curatorialNote:
-      'Critical studies of proportional measure, optical contrast, and durable editorial interfaces built for concentrated reading.',
-    image: '/src/assets/images/section_design_craft_1795444152910.jpg',
-    imageAlt: 'Printed typographic grid specimen sheets, brass dividers, and linen-bound books on a limestone desk.',
-  },
-  {
-    slug: 'science-and-climate',
-    name: 'Science & Climate',
-    shortName: 'Science',
-    description:
-      'Deep geothermal baseload, oceanic carbon telemetry, HVDC interconnectors, and physics-informed climate modeling.',
-    curatorialNote:
-      'Empirical dispatches from field observatories, grid operators, and peer-reviewed materials laboratories.',
-    image: '/src/assets/images/section_science_climate_1795444152521.jpg',
-    imageAlt: 'Nordic geothermal and marine research observatory along a misty basalt coastline at dawn.',
-  },
-  {
-    slug: 'culture-and-society',
-    name: 'Culture & Society',
-    shortName: 'Culture',
-    description:
-      'Independent print quarterlies, civic libraries, verifiable fact-checking ledgers, and calm digital institutions.',
-    curatorialNote:
-      'Long-form essays examining how enduring civic spaces cultivate deep literacy and public trust.',
+      'Focused on transparent price tables, verified business licenses, multi-platform NAP parity, and Advertising Law compliance.',
     image: '/src/assets/images/section_culture_society_1795444152185.jpg',
-    imageAlt: 'Quiet sunlit European university reading room with tall oak bookshelves and arched windows.',
+    imageAlt: 'Modern architectural reading hall illuminated by warm daylight representing Chinese industry research.',
+  },
+  {
+    slug: 'technical-seo',
+    name: 'Technical SEO & Retrieval',
+    shortName: 'Technical SEO',
+    description:
+      'Crawl budget engineering, Edge SSR, Core Web Vitals (LCP/INP/CLS), canonicalization, and multilingual hreflang architecture.',
+    curatorialNote:
+      'Empirical studies grounded in server crawl logs, Chromium trace telemetry, and HTTP/3 caching protocols.',
+    image: '/src/assets/images/section_ai_systems_1795444152985.jpg',
+    imageAlt: 'Server monoliths and optical prisms inside a European search retrieval research facility.',
+  },
+  {
+    slug: 'generative-geo',
+    name: 'Generative Engine Optimization',
+    shortName: 'GEO Research',
+    description:
+      'Gemini grounding mechanics, AI Overviews citation salience, Answer-First prose engineering, /llms.txt standards, and RAG passage chunking.',
+    curatorialNote:
+      'Reproducible experiments measuring LLM retrieval precision, grounded attribution fidelity, and semantic passage density.',
+    image: '/src/assets/images/editorial_hero_architecture_1795444152682.jpg',
+    imageAlt: 'Sunlight streaming across classical stone columns and modern digital research desks.',
+  },
+  {
+    slug: 'schema-semantics',
+    name: 'Schema Graphs & Semantics',
+    shortName: 'Schema Graphs',
+    description:
+      'Linked JSON-LD @graph modeling, Knowledge Panel entity reconciliation, FAQ parity, and open-web ontology design.',
+    curatorialNote:
+      'Formal structural validation covering Article, ScholarlyArticle, Person, Organization, Product, and FAQPage schemas.',
+    image: '/src/assets/images/section_design_craft_1795444152910.jpg',
+    imageAlt: 'Structured typographic specification grids, brass dividers, and bound semantic ontology volumes.',
+  },
+  {
+    slug: 'eeat-evaluation',
+    name: 'E-E-A-T & Quality Trust',
+    shortName: 'E-E-A-T Trust',
+    description:
+      'Search Quality Rater Guidelines, YMYL verification protocols, author provenance ledgers, and anti-spam content integrity.',
+    curatorialNote:
+      'Research auditing how verifiable first-hand evidence, peer review, and institutional citations govern organic authority.',
+    image: '/src/assets/images/section_science_climate_1795444152521.jpg',
+    imageAlt: 'Nordic telemetry observatory monitoring verified empirical field measurements along a basalt coast.',
+  },
+  {
+    slug: 'search-analytics',
+    name: 'Search Ecosystem & Growth',
+    shortName: 'Search Analytics',
+    description:
+      'Search Console telemetry modeling, zero-click attribution, cross-market localization, and enterprise taxonomy governance.',
+    curatorialNote:
+      'Quantitative analysis of SERP surface shifts, entity-level demand capture, and multi-market organic growth.',
+    image: '/src/assets/images/section_global_economy_1795444152846.jpg',
+    imageAlt: 'Classical European exchange hall representing global search demand and market intelligence.',
   },
 ];
 

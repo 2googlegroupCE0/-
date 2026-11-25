@@ -1,165 +1,126 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useMemo, type MouseEvent } from 'react';
 import { CheckCircle2, ExternalLink } from 'lucide-react';
-import { ALL_ARTICLES } from '../data/articles.ts';
+import type { Locale } from '../types/editorial.ts';
+import { UI_COPY } from '../data/i18n.ts';
+import {
+  getCorpusStats,
+  withLocalePrefix,
+} from '../data/articlesLocalized.ts';
+import { LanguageSwitch } from '../components/LanguageSwitch.tsx';
 import { useDocumentSeo } from '../hooks/useDocumentSeo.ts';
-import { buildArticleJsonLd, buildStandardsJsonLd } from '../utils/seoSchema.ts';
+import { buildStandardsJsonLd } from '../utils/seoSchema.ts';
 
 interface StandardsPageProps {
+  locale: Locale;
   onNavigate: (path: string) => void;
 }
 
-interface ComplianceSummary {
-  publication: string;
-  baseUrl: string;
-  articleCount: number;
-  sectionCount: number;
-  authorCount: number;
-  totalWordCount: number;
-  totalFaqPairs: number;
-  totalPrimaryCitations: number;
-}
+const PRINCIPLES_LIST: Record<
+  Locale,
+  Array<{ category: string; title: string; detail: string }>
+> = {
+  zh: [
+    {
+      category: '一行业一深度专题',
+      title: '严控数量膨胀，拒绝批量套话分身页',
+      detail:
+        '全站严格固化为 175 篇高纯度核心指南（150 个行业 + 10 大国产大模型 + 15 篇技术工程规范），每个行业或大模型仅保留唯一权威入口页，将不同城市或参数场景收拢于同一专题下，彻底杜绝内容同类相残。',
+    },
+    {
+      category: '零虚构数据准则',
+      title: '不编造样本规模与伪造百分比实验',
+      detail:
+        '禁止虚构如“n=1000 测试提升 41.5%”等不可核验的数字，所有工程基准均直接对齐 Google 官方核心网页指标、W3C Schema.org 与 RFC 公开规范。',
+    },
+    {
+      category: '中国大模型生态与合规',
+      title: '贴合国产检索链路并严格排查广告法红线',
+      detail:
+        '针对覆盖全部 20 个国民经济门类的 150 个中国细分行业（从农林采矿、硬科技制造到中医康养与社会服务），明确标注广告法极限词禁区与高可信外部信源对齐规范，同时提供免费合规检测工具。',
+    },
+    {
+      category: '服务端首包直出',
+      title: '完整语义 HTML 与真实状态码返回',
+      detail:
+        '每一篇指南与工具页均通过服务端 HTTP 200 首包直接输出完整结构化正文、标题与目录导航，无效路径严格返回 404 与 noindex，彻底杜绝 Soft-404。',
+    },
+    {
+      category: '双语平行出版',
+      title: '中英文独立规范路径与 Hreflang 互指',
+      detail:
+        '默认中文版与英文版（/en/*）均配置严格自指 Canonical 与对称 Hreflang 标签，保证多语言搜索收录精准不混淆。',
+    },
+    {
+      category: '纯净无干扰阅读',
+      title: '专注文字排版与可直接落地的实操代码',
+      detail:
+        '页面无诱导弹窗、无悬浮广告遮挡，注重字号行距与对比度，配套可一键复制的 Schema.org JSON-LD 与透明价目 HTML 模板。',
+    },
+  ],
+  en: [
+    {
+      category: 'One Topic, One Pillar',
+      title: 'Zero Permutation Bloat or Keyword Cannibalization',
+      detail:
+        'The repository is intentionally curated to 175 comprehensive guides (150 verticals, 10 domestic LLM ecosystems, and 15 technical engineering specs)—one authoritative playbook per topic, eliminating thin template variations.',
+    },
+    {
+      category: 'Zero Synthetic Stats',
+      title: 'Primary Technical Specifications Over Fabricated Numbers',
+      detail:
+        'We do not invent unverifiable lab sample sizes or lift percentages. Every engineering target cites official Google Search Central, Core Web Vitals, W3C, or IETF specs.',
+    },
+    {
+      category: 'China Ecosystem & Safety',
+      title: 'Domestic Grounding Alignment & Advertising Guardrails',
+      detail:
+        'Each of the 150 industry playbooks spanning all 20 national economy sectors highlights authoritative credential registries and advertising boundaries alongside a live compliance scanner.',
+    },
+    {
+      category: 'First-Byte Semantic SSR',
+      title: 'Complete Server HTML & Honest HTTP Status Codes',
+      detail:
+        'Pages emit full semantic markup directly inside the HTTP 200 response while missing routes strictly return HTTP 404 with noindex, nofollow.',
+    },
+    {
+      category: 'Bilingual Parity',
+      title: 'Canonical & Bidirectional Hreflang Alignment',
+      detail:
+        'Parallel Chinese and English editions maintain matched terminology, JSON-LD graphs, and clean XML sitemap coverage.',
+    },
+    {
+      category: 'Practical Utility',
+      title: 'Ad-Free Typography & Exportable Implementation Tools',
+      detail:
+        'Clean typography without intrusive popups, paired directly with copy-ready Schema.org JSON-LD, HTML price tables, and /llms.txt generators.',
+    },
+  ],
+};
 
-type EndpointTab = '/robots.txt' | '/sitemap.xml' | '/llms.txt' | '/feed.xml';
-
-const REQUIREMENTS_CHECKLIST = [
-  {
-    category: 'Google Search Crawlability',
-    title: 'Dynamic /robots.txt & /sitemap.xml',
-    detail:
-      'Permits Googlebot, Google-Extended, Bingbot, and OAI-SearchBot while indexing all 50 canonical article URLs with ISO-8601 lastmod dates and image declarations.',
-  },
-  {
-    category: 'Gemini & Generative Retrieval',
-    title: 'Official /llms.txt & /llms-full.txt Specification',
-    detail:
-      'Exposes a curated Markdown directory at /llms.txt and complete structured prose + citations at /llms-full.txt so Gemini retrieval systems parse all 50 articles deterministically.',
-  },
-  {
-    category: 'Answer-First Passage Structure',
-    title: 'Executive Summary & Explicit FAQ Pairs',
-    detail:
-      'Every essay opens with a 45-to-65-word direct factual answer, bulleted takeaways, structured HTML comparison tables, and visible FAQ sections synced 1:1 with FAQPage JSON-LD.',
-  },
-  {
-    category: 'Schema.org Knowledge Graph',
-    title: 'Linked @graph Entities Across Every Route',
-    detail:
-      'Server-side HTML injection and client navigation emit linked NewsMediaOrganization, Person, BreadcrumbList, NewsArticle, and FAQPage nodes joined by @id URIs.',
-  },
-  {
-    category: 'E-E-A-T Provenance',
-    title: 'Named Experts, Peer Reviewers & Primary Sources',
-    detail:
-      'All 50 essays carry verifiable author biographies, academic/field credentials, independent fact-check reviewer credits, and clickable institutional references.',
-  },
-  {
-    category: 'Core Web Vitals & Page Experience',
-    title: 'Zero Arrival Popups, Pre-Allocated Media & Lean Bundles',
-    detail:
-      'Explicit aspect ratios prevent layout shift (CLS), compositor-only transitions keep INP below 200ms, and zero interstitial overlays obstruct mobile reading.',
-  },
-];
-
-export function StandardsPage({ onNavigate }: StandardsPageProps) {
-  const [summary, setSummary] = useState<ComplianceSummary | null>(null);
-  const [activeEndpoint, setActiveEndpoint] = useState<EndpointTab>('/llms.txt');
-  const [endpointPreview, setEndpointPreview] = useState<string>('');
-  const [loadingPreview, setLoadingPreview] = useState<boolean>(true);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [selectedSlug, setSelectedSlug] = useState<string>(ALL_ARTICLES[0].slug);
+export function StandardsPage({ locale, onNavigate }: StandardsPageProps) {
+  const copy = UI_COPY[locale];
+  const stats = useMemo(() => getCorpusStats(), []);
 
   const pageJsonLd = useMemo(
     () =>
       buildStandardsJsonLd(
         typeof window !== 'undefined' ? window.location.origin : '',
+        locale,
       ),
-    [],
+    [locale],
   );
 
   useDocumentSeo({
-    title: 'Google Search & Gemini Compliance Standards – The Meridian Review',
-    description:
-      'Inspect live robots.txt, sitemap.xml, llms.txt, Schema.org JSON-LD graphs, and E-E-A-T standards built into The Meridian Review.',
-    canonicalPath: '/standards',
+    title:
+      locale === 'zh'
+        ? '研究方法与编辑准则 – SEO 与 GEO 研究院'
+        : 'Research Methodology & Editorial Standards – SEO & GEO Research Institute',
+    description: copy.standardsPageDesc,
+    basePath: '/standards',
+    locale,
     imagePath: '/src/assets/images/section_ai_systems_1795444152985.jpg',
     jsonLd: pageJsonLd,
   });
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/compliance-summary')
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load compliance summary');
-        return res.json();
-      })
-      .then((data: ComplianceSummary) => {
-        if (!cancelled) setSummary(data);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSummary({
-            publication: 'The Meridian Review',
-            baseUrl: window.location.origin,
-            articleCount: ALL_ARTICLES.length,
-            sectionCount: 5,
-            authorCount: 6,
-            totalWordCount: ALL_ARTICLES.reduce((s, a) => s + a.wordCount, 0),
-            totalFaqPairs: ALL_ARTICLES.reduce((s, a) => s + a.faqs.length, 0),
-            totalPrimaryCitations: ALL_ARTICLES.reduce(
-              (s, a) => s + a.citations.length,
-              0,
-            ),
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingPreview(true);
-    setPreviewError(null);
-    fetch(activeEndpoint)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.text();
-      })
-      .then((text) => {
-        if (!cancelled) {
-          setEndpointPreview(text);
-          setLoadingPreview(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setPreviewError(err instanceof Error ? err.message : 'Unable to fetch endpoint');
-          setLoadingPreview(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeEndpoint]);
-
-  const selectedArticle = useMemo(
-    () => ALL_ARTICLES.find((a) => a.slug === selectedSlug) ?? ALL_ARTICLES[0],
-    [selectedSlug],
-  );
-
-  const inspectedJsonLd = useMemo(
-    () =>
-      JSON.stringify(
-        buildArticleJsonLd(
-          selectedArticle,
-          typeof window !== 'undefined' ? window.location.origin : '',
-        ),
-        null,
-        2,
-      ),
-    [selectedArticle],
-  );
 
   const handleLink = (e: MouseEvent<HTMLAnchorElement>, path: string) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -167,79 +128,77 @@ export function StandardsPage({ onNavigate }: StandardsPageProps) {
     onNavigate(path);
   };
 
+  const homeHref = withLocalePrefix('/', locale);
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-      <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-xs text-[#57534E]">
-        <a
-          href="/"
-          onClick={(e) => handleLink(e, '/')}
-          className="hover:text-[#1C1917] hover:underline"
-        >
-          Front Page
-        </a>
-        <span aria-hidden="true">/</span>
-        <span className="font-medium text-[#1C1917]">SEO &amp; GEO Standards</span>
-      </nav>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-[#57534E]">
+          <a
+            href={homeHref}
+            onClick={(e) => handleLink(e, homeHref)}
+            className="hover:text-[#1C1917] hover:underline"
+          >
+            {copy.navFrontPage}
+          </a>
+          <span aria-hidden="true">/</span>
+          <span className="font-medium text-[#1C1917]">{copy.navStandards}</span>
+        </nav>
+
+        <LanguageSwitch locale={locale} basePath="/standards" onNavigate={onNavigate} />
+      </div>
 
       <header className="border-b border-[#D6D0C4] pb-8">
         <p className="text-xs font-semibold tracking-wider text-[#9A3412] uppercase">
-          Technical &amp; Editorial Verification
+          {copy.standardsPageEyebrow}
         </p>
         <h1 className="editorial-balance mt-2 font-serif text-3xl font-semibold tracking-tight text-[#1C1917] sm:text-4xl">
-          Google Search &amp; Gemini Compliance Architecture
+          {copy.standardsPageTitle}
         </h1>
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-[#44403C]">
-          Verify every machine-readable crawler endpoint, Schema.org JSON-LD graph, and E-E-A-T editorial signal served live by The Meridian Review.
+          {copy.standardsPageDesc}
         </p>
       </header>
 
-      {/* Corpus Quantitative Summary */}
-      <section aria-label="Indexed Corpus Summary" className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-4">
-          <p className="text-xs text-[#57534E]">Indexed Essays</p>
+      {/* Institute Overview Stats */}
+      <section aria-label="Institute Overview" className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-5">
+          <p className="text-xs text-[#57534E]">{copy.statEssays}</p>
           <p className="mt-1 font-mono text-2xl font-medium tabular-nums text-[#1C1917]">
-            {summary?.articleCount ?? 50}
+            {stats.articleCount.toLocaleString()}
           </p>
         </div>
-        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-4">
-          <p className="text-xs text-[#57534E]">Sections</p>
+        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-5">
+          <p className="text-xs text-[#57534E]">
+            {locale === 'zh' ? '覆盖中国细分行业' : 'Covered China Verticals'}
+          </p>
           <p className="mt-1 font-mono text-2xl font-medium tabular-nums text-[#1C1917]">
-            {summary?.sectionCount ?? 5}
+            {stats.industryCount}
           </p>
         </div>
-        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-4">
-          <p className="text-xs text-[#57534E]">Named Authors</p>
+        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-5">
+          <p className="text-xs text-[#57534E]">
+            {locale === 'zh' ? '拆解国产大模型生态' : 'China LLM Ecosystems'}
+          </p>
           <p className="mt-1 font-mono text-2xl font-medium tabular-nums text-[#1C1917]">
-            {summary?.authorCount ?? 6}
+            {stats.llmPlatformCount}
           </p>
         </div>
-        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-4">
-          <p className="text-xs text-[#57534E]">Total Words</p>
+        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-5">
+          <p className="text-xs text-[#57534E]">{copy.statAuthors}</p>
           <p className="mt-1 font-mono text-2xl font-medium tabular-nums text-[#1C1917]">
-            {(summary?.totalWordCount ?? 60000).toLocaleString()}
-          </p>
-        </div>
-        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-4">
-          <p className="text-xs text-[#57534E]">FAQPage Pairs</p>
-          <p className="mt-1 font-mono text-2xl font-medium tabular-nums text-[#1C1917]">
-            {summary?.totalFaqPairs ?? 65}
-          </p>
-        </div>
-        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-4">
-          <p className="text-xs text-[#57534E]">Primary Citations</p>
-          <p className="mt-1 font-mono text-2xl font-medium tabular-nums text-[#1C1917]">
-            {summary?.totalPrimaryCitations ?? 60}
+            {stats.authorCount}
           </p>
         </div>
       </section>
 
-      {/* Architectural Standards Grid */}
-      <section id="editorial-policy" aria-label="Implemented Standards" className="mt-12">
+      {/* Editorial & Methodology Principles */}
+      <section id="editorial-policy" aria-label={copy.sixPillarsTitle} className="mt-12">
         <h2 className="font-serif text-2xl font-semibold text-[#1C1917]">
-          Six Pillars Implemented Across All 50 Essays
+          {copy.sixPillarsTitle}
         </h2>
         <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {REQUIREMENTS_CHECKLIST.map((item) => (
+          {PRINCIPLES_LIST[locale].map((item) => (
             <div
               key={item.title}
               className="rounded-md border border-[#D6D0C4] bg-[#FBF9F5] p-5"
@@ -259,117 +218,41 @@ export function StandardsPage({ onNavigate }: StandardsPageProps) {
         </div>
       </section>
 
-      {/* Live Crawler Endpoint Inspector */}
-      <section aria-label="Live Crawler Endpoints" className="mt-14 border-t border-[#D6D0C4] pt-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="font-serif text-2xl font-semibold text-[#1C1917]">
-              Live Crawler &amp; LLM Endpoints
-            </h2>
-            <p className="mt-1 text-sm text-[#57534E]">
-              Fetched directly from Express routes serving search bots and Gemini retrieval agents.
-            </p>
-          </div>
-
-          <div
-            role="tablist"
-            aria-label="Select endpoint to inspect"
-            className="flex flex-wrap items-center gap-1 rounded-md border border-[#E2DDD3] bg-[#F5F1E9] p-1"
-          >
-            {(['/llms.txt', '/sitemap.xml', '/robots.txt', '/feed.xml'] as EndpointTab[]).map(
-              (ep) => (
-                <button
-                  key={ep}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeEndpoint === ep}
-                  onClick={() => setActiveEndpoint(ep)}
-                  className={`min-h-[36px] rounded px-3 py-1.5 font-mono text-xs whitespace-nowrap transition-colors ${
-                    activeEndpoint === ep
-                      ? 'bg-[#FBF9F5] text-[#1C1917] shadow-xs'
-                      : 'text-[#57534E] hover:text-[#1C1917]'
-                  }`}
-                >
-                  {ep}
-                </button>
-              ),
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4 overflow-hidden rounded-md border border-[#D6D0C4] bg-[#F5F1E9]">
-          <div className="flex items-center justify-between border-b border-[#D6D0C4] px-4 py-2.5 text-xs">
-            <span className="font-mono text-[#1C1917]">{activeEndpoint}</span>
+      {/* Open Access & RSS Feeds */}
+      <section aria-label={copy.editorialWorkflowTitle} className="mt-14 border-t border-[#D6D0C4] pt-10">
+        <div className="rounded-md border border-[#D6D0C4] bg-[#F5F1E9] p-6 sm:p-8">
+          <h2 className="font-serif text-2xl font-semibold text-[#1C1917]">
+            {copy.editorialWorkflowTitle}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#44403C]">
+            {copy.editorialWorkflowDesc}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
             <a
-              href={activeEndpoint}
+              href="/feed.xml"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium text-[#1E3A8A] hover:underline"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-[#D6D0C4] bg-[#FBF9F5] px-4 py-2 text-xs font-medium text-[#1C1917] hover:border-[#1C1917]"
             >
-              <span>Open Raw Endpoint</span>
-              <ExternalLink className="h-3 w-3" />
+              <span>{copy.rssZhLabel}</span>
+              <ExternalLink className="h-3 w-3 text-[#57534E]" />
             </a>
-          </div>
-          <div className="max-h-80 overflow-auto bg-[#FBF9F5] p-4">
-            {loadingPreview ? (
-              <p className="font-mono text-xs text-[#78716C]">Loading live endpoint output...</p>
-            ) : previewError ? (
-              <p className="font-mono text-xs text-[#9A3412]">Error: {previewError}</p>
-            ) : (
-              <pre className="font-mono text-xs leading-relaxed text-[#292524] whitespace-pre-wrap">
-                {endpointPreview.slice(0, 6500)}
-                {endpointPreview.length > 6500
-                  ? '\n\n... [truncated in preview — click "Open Raw Endpoint" above for complete output]'
-                  : ''}
-              </pre>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Per-Article Schema.org JSON-LD Graph Inspector */}
-      <section aria-label="Per-Article JSON-LD Inspector" className="mt-14 border-t border-[#D6D0C4] pt-10">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="font-serif text-2xl font-semibold text-[#1C1917]">
-              Per-Article Schema.org JSON-LD Inspector
-            </h2>
-            <p className="mt-1 text-sm text-[#57534E]">
-              Select any of the 50 essays to inspect the exact @graph payload injected for Googlebot and Gemini.
-            </p>
-          </div>
-
-          <select
-            value={selectedSlug}
-            onChange={(e) => setSelectedSlug(e.target.value)}
-            aria-label="Select essay for JSON-LD inspection"
-            className="min-h-[40px] max-w-full rounded-md border border-[#D6D0C4] bg-[#FBF9F5] px-3 py-2 text-xs font-medium text-[#1C1917] focus:border-[#1E3A8A] focus:outline-none lg:w-96"
-          >
-            {ALL_ARTICLES.map((a) => (
-              <option key={a.slug} value={a.slug}>
-                {String(a.id).padStart(2, '0')}. {a.title}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="mt-4 overflow-hidden rounded-md border border-[#D6D0C4] bg-[#F5F1E9]">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6D0C4] px-4 py-2.5 text-xs">
-            <span className="font-mono text-[#1C1917]">
-              &lt;script type=&quot;application/ld+json&quot;&gt; for /articles/{selectedArticle.slug}
-            </span>
             <a
-              href={`/articles/${selectedArticle.slug}`}
-              onClick={(e) => handleLink(e, `/articles/${selectedArticle.slug}`)}
-              className="font-medium text-[#1E3A8A] hover:underline"
+              href="/en/feed.xml"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-[#D6D0C4] bg-[#FBF9F5] px-4 py-2 text-xs font-medium text-[#1C1917] hover:border-[#1C1917]"
             >
-              Open Essay
+              <span>{copy.rssEnLabel}</span>
+              <ExternalLink className="h-3 w-3 text-[#57534E]" />
             </a>
-          </div>
-          <div className="max-h-96 overflow-auto bg-[#FBF9F5] p-4">
-            <pre className="font-mono text-xs leading-relaxed text-[#292524]">
-              {inspectedJsonLd}
-            </pre>
+            <a
+              href={withLocalePrefix('/archive', locale)}
+              onClick={(e) => handleLink(e, withLocalePrefix('/archive', locale))}
+              className="inline-flex min-h-[40px] items-center rounded-md bg-[#1C1917] px-5 py-2 text-xs font-medium text-[#FBF9F5] hover:bg-[#1E3A8A]"
+            >
+              {copy.browseArchive}
+            </a>
           </div>
         </div>
       </section>
